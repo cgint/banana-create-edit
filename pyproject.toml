@@ -33,3 +33,7 @@ dev = [
     "mypy>=1.17.1",
     "ruff",
 ]
+
+[[tool.mypy.overrides]]
+module = "google.genai.*"
+ignore_missing_imports = true
