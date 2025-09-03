@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gemini-image-generator"
+version = "0.1.0"
+description = "A tool to create and edit images using Gemini 2.5 Flash Image Preview via Vertex AI."
+requires-python = ">=3.11"
+dependencies = [
+    "google-genai",
+    "Pillow",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+create = "image_generator.main:main_create"
+edit = "image_generator.main:main_edit"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["image_generator"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.1",
+    "ruff",
+]
