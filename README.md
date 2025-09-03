@@ -66,8 +66,6 @@ A tool to create and edit images using Gemini 2.5 Flash Image Preview via Vertex
     GOOGLE_GENAI_USE_VERTEXAI="True"
     ```
 
-    Alternatively, you can set the `GEMINI_API_KEY` environment variable directly.
-
     Ensure your Google Cloud environment is authenticated (e.g., via `gcloud auth application-default login`) and Vertex AI is enabled for your project.
 
 ## Usage
@@ -79,7 +77,7 @@ Commands are run using `uv run <command>`.
 To generate an image from a text prompt:
 
 ```bash
-uv run create "A futuristic cityscape at sunset, with flying cars and neon lights." -o output/city.png
+uv run create "A fineart aquarelle of a tree in a landscape" -o output/tree.png
 ```
 
 ### Edit an Image
@@ -90,7 +88,7 @@ To edit an existing image based on a text prompt:
 2.  Run the edit command, specifying the path to your input image:
 
     ```bash
-    uv run edit "Make this image look like a watercolor painting." assets/my_input_image.png -o output/watercolor_edit.png
+    uv run edit "make it look like salvador dali" output/tree.png -o output/tree_edited.png
     ```
 
     Replace `my_input_image.png` with the actual filename of your input image.
