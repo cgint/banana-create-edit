@@ -4,49 +4,45 @@ import os
 from io import BytesIO
 from pathlib import Path
 from typing import Union
+import mimetypes
 
 from google import genai
-
-from google.genai.types import GenerateContentConfig, Modality
+from google.genai.types import GenerateContentConfig, Modality, Part, Blob, Content
 from PIL import Image
 
 
 class GeminiImageGenerator:
     """A class to generate and edit images using the Gemini API via Vertex AI."""
 
-    def __init__(self, model_name: str = "gemini-2.5-flash-image-preview") -> None:
+    def __init__(self) -> None:
         """
         Initializes the Gemini client.
         Expects GOOGLE_* environment variables to be set for authentication.
         """
-        self.model_name = model_name
+        self.model_name = "gemini-2.5-flash-image-preview"
         try:
-            api_key = os.getenv("GEMINI_API_KEY")
-            if api_key:
-                self.client = genai.Client(api_key=api_key)
-            else:
-                project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-                location = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
-                use_vertex_ai = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "False").lower() == "true"
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+            location = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
+            print(f"Using model: {self.model_name}")
+            print(f"Using project: {project_id}")
+            print(f"Using location: {location}")
 
-                if not project_id and use_vertex_ai:
-                    raise ValueError("GOOGLE_CLOUD_PROJECT must be set when GOOGLE_GENAI_USE_VERTEXAI is True")
+            if not project_id:
+                raise ValueError(
+                    "GOOGLE_CLOUD_PROJECT must be set"
+                )
 
-                if use_vertex_ai:
-                    self.client = genai.Client(project=project_id, location=location, vertexai=True)
-                else:
-                    # Fallback if no API key and not using Vertex AI explicitly
-                    self.client = genai.Client()
+            # Unset API keys to force Vertex AI usage
+            os.environ.pop("GOOGLE_API_KEY", None)
+            os.environ.pop("GEMINI_API_KEY", None)
+            
+            self.client = genai.Client(
+                project=project_id, location=location, vertexai=True
+            )
         except Exception as e:
             print(f"Error initializing Gemini client: {e}")
             print(
                 "Please ensure your environment is authenticated with GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT (for Vertex AI)."
-            )
-            raise
-        except Exception as e:
-            print(f"Error initializing Gemini client: {e}")
-            print(
-                "Please ensure your environment is authenticated and GOOGLE_CLOUD_PROJECT is set if using Vertex AI."
             )
             raise
 
@@ -54,7 +50,11 @@ class GeminiImageGenerator:
         self, response: genai.types.GenerateContentResponse, output_path: Path
     ) -> None:
         """Extracts and saves an image from a Gemini API response."""
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+        if (
+            response.candidates
+            and response.candidates[0].content
+            and response.candidates[0].content.parts
+        ):
             for part in response.candidates[0].content.parts:
                 if part.inline_data and part.inline_data.data:
                     image = Image.open(BytesIO(part.inline_data.data))
@@ -87,7 +87,10 @@ class GeminiImageGenerator:
             print(f"An error occurred during image creation: {e}")
 
     def edit_image(
-        self, prompt: str, base_image_path: Union[str, Path], output_path: Union[str, Path]
+        self,
+        prompt: str,
+        base_image_path: Union[str, Path],
+        output_path: Union[str, Path],
     ) -> None:
         """
         Edits an existing image based on a text prompt.
@@ -99,8 +102,19 @@ class GeminiImageGenerator:
         """
         print(f"Editing image '{base_image_path}' with prompt: '{prompt}'...")
         try:
-            base_image = Image.open(base_image_path)
-            contents = [base_image, prompt]
+            mime_type, _ = mimetypes.guess_type(base_image_path)
+            if not mime_type or not mime_type.startswith("image"):
+                raise ValueError(f"Could not determine image type for {base_image_path}")
+
+            with open(base_image_path, "rb") as f:
+                image_bytes = f.read()
+
+            blob = Blob(data=image_bytes, mime_type=mime_type)
+            image_part = Part(inline_data=blob)
+            text_part = Part(text=prompt)
+
+            contents = Content(role="user", parts=[text_part, image_part])
+
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=contents,
